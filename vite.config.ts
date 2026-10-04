@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
@@ -6,14 +7,25 @@ import pkg from './package.json'
 
 /**
  * GitHub Pages serves a project site from /<repository>/.
- * In GitHub Actions the repository name comes from GITHUB_REPOSITORY ("owner/repo");
- * locally it falls back to the package name, which matches the repository.
+ * In GitHub Actions the repository name comes from GITHUB_REPOSITORY ("owner/repo").
+ * Locally it is read from the git "origin" remote, so local builds match CI;
+ * the package name is only a last resort when there is no remote.
  * A user/organisation site (<owner>.github.io) is served from the root instead.
  * BASE_PATH can override either, e.g. BASE_PATH=/ for a custom domain.
  */
+function repoFromGitRemote() {
+  try {
+    const url = execSync('git config --get remote.origin.url', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    // Handles https://github.com/owner/repo(.git) and git@github.com:owner/repo(.git)
+    return url.match(/[/:]([^/:]+?)(?:\.git)?$/)?.[1]
+  } catch {
+    return undefined
+  }
+}
+
 function pagesBase() {
   if (process.env.BASE_PATH) return process.env.BASE_PATH
-  const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? pkg.name
+  const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? repoFromGitRemote() ?? pkg.name
   return repo.endsWith('.github.io') ? '/' : `/${repo}/`
 }
 
