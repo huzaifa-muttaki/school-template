@@ -8,7 +8,8 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* BASE_URL is "/" in dev and "/<repo>/" on GitHub Pages; strip the trailing slash for the router */}
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <App />
     </BrowserRouter>
   </StrictMode>,
